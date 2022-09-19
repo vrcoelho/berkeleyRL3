@@ -13,7 +13,7 @@
 
 
 import mdp
-import util
+import util, copy
 from learningAgents import ValueEstimationAgent
 
 
@@ -48,12 +48,19 @@ class ValueIterationAgent(ValueEstimationAgent):
         "*** YOUR CODE HERE ***"
         states = self.mdp.getStates()
 
+        new_values = copy.deepcopy(self.values)
         for i in range(iterations):
             for s in states:
-                action = self.computeActionFromValues(s)
-                if action == None:
-                    continue
-                self.values[s] = self.computeQValueFromValues(s, action)
+                max_qvalue = float('-inf')
+                actions = self.mdp.getPossibleActions(s)
+                for a in actions:
+                    qvalue = self.computeQValueFromValues(s, a)
+                    if qvalue >= max_qvalue:
+                        max_qvalue = qvalue
+                if not self.mdp.isTerminal(s):
+                    new_values[s] = max_qvalue
+            self.values = copy.deepcopy(new_values)
+
 
     def getValue(self, state):
         """
@@ -73,15 +80,8 @@ class ValueIterationAgent(ValueEstimationAgent):
         transitions = self.mdp.getTransitionStatesAndProbs(state, action)
         q = 0
         for nextState, prob in transitions:
-            ## option 1
-            # q += prob*self.values[nextState]
-
-            # option 2
-            q += prob * (reward + (self.discount  * self.values[nextState]))
-        ## option 1
-        # return reward + self.discount*q
-        # option 2
-        return q
+            q += self.discount*prob*self.values[nextState]
+        return reward + q
 
     def computeActionFromValues(self, state):
         """
@@ -93,10 +93,10 @@ class ValueIterationAgent(ValueEstimationAgent):
           terminal state, you should return None.
         """
         "*** YOUR CODE HERE ***"
-        if state == "TERMINAL_STATE":
+        if self.mdp.isTerminal(state):
             return None
 
-        vmax =  float('-inf')
+        vmax = float('-inf')
         action = None
         for a in self.mdp.getPossibleActions(state):
             v = self.computeQValueFromValues(state, a)
